@@ -247,6 +247,8 @@ class QueryChain<T = any> implements PromiseLike<T> {
   }
 }
 
+import defaultData from './defaultData.json';
+
 class LocalDatabase {
   private data: {
     users: any[];
@@ -254,17 +256,18 @@ class LocalDatabase {
     paymentparts: any[];
     customers: any[];
   } = {
-    users: [],
-    invoices: [],
-    paymentparts: [],
-    customers: [],
+    users: JSON.parse(JSON.stringify(defaultData.users || [])),
+    invoices: JSON.parse(JSON.stringify(defaultData.invoices || [])),
+    paymentparts: JSON.parse(JSON.stringify(defaultData.paymentparts || [])),
+    customers: JSON.parse(JSON.stringify(defaultData.customers || [])),
   };
 
   private filePath: string;
   private initialized: boolean = false;
 
   constructor() {
-    const dataDir = path.join(process.cwd(), '.data');
+    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+    const dataDir = isServerless ? path.join('/tmp', '.data') : path.join(process.cwd(), '.data');
     this.filePath = path.join(dataDir, 'smartpay-db.json');
   }
 
@@ -273,22 +276,24 @@ class LocalDatabase {
     try {
       const dataDir = path.dirname(this.filePath);
       if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+        try {
+          fs.mkdirSync(dataDir, { recursive: true });
+        } catch {}
       }
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf-8');
         const parsed = JSON.parse(raw);
         this.data = {
-          users: parsed.users || [],
-          invoices: parsed.invoices || [],
-          paymentparts: parsed.paymentparts || [],
+          users: parsed.users?.length ? parsed.users : JSON.parse(JSON.stringify(defaultData.users || [])),
+          invoices: parsed.invoices?.length ? parsed.invoices : JSON.parse(JSON.stringify(defaultData.invoices || [])),
+          paymentparts: parsed.paymentparts?.length ? parsed.paymentparts : JSON.parse(JSON.stringify(defaultData.paymentparts || [])),
           customers: parsed.customers || [],
         };
       } else {
         this.save();
       }
     } catch (err) {
-      console.warn('[SmartPay LocalStore] Init warning:', err);
+      console.warn('[SmartPay LocalStore] Init warning (using in-memory default data):', err);
     }
     this.initialized = true;
   }

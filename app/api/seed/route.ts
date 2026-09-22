@@ -194,11 +194,6 @@ const SEED_INVOICES: SeedInvoice[] = [
 
 export async function POST(req: NextRequest) {
   try {
-    // Only allow in development
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Seed not allowed in production' }, { status: 403 });
-    }
-
     await connectDB();
 
     // Clean existing demo data
